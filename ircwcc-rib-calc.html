@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Rib Calculator</title>
+    <title>IRCWCC Rib Calculator</title>
 
     <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
     <style>
@@ -56,7 +56,6 @@
 
         }
     </style>
-
 </head>
 
 
@@ -64,7 +63,7 @@
 <div ng-controller="RibCalcCtrl">
     <div id="data"><div id="title">IRCWCC Rib Calculator</div>
 
-        <div novalidate class="simple-form">
+        <form novalidate class="simple-form">
         <div id="dims">
         Length: <br/><input type="number"
                        ng-model="ship.loa"
@@ -92,7 +91,7 @@
             1/8"
         </label>
     </div>
-    </form></div>
+    </form>
 
     <div class="results">
         {{displayResults(ship)}}
@@ -130,7 +129,6 @@
                     } else {
                         int = int + ' '
                     }
-                    ;
 
                     return int + numerator + '/' + denominator + '"';
                 }
