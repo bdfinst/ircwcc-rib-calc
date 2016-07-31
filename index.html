@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rib Calculator</title>
+
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
+    <style>
+
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 2em;
+        }
+
+        input[type=number] {
+            width: 100%;
+            padding: 5px 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            /*font-family: Arial, Helvetica, sans-serif;*/
+            font-size: 1.1em;
+            border: 2px solid #a1c9ff;
+            border-radius: 5px;
+        }
+
+        .results {
+            color: #369;
+            float: left;
+            text-align: center;
+            font-size: 1.3em;
+            width: 100%;
+        }
+
+        #dims {
+            float: left;
+            padding: 5px 10px;
+        }
+
+        #ribs {
+            float: right;
+            padding: 5px 10px;
+        }
+
+        #data {
+            width: 400px;
+            float: left;
+            background-color: #e0e9ff;
+            padding: 5px 10px;
+        }
+
+        #title {
+            color: #369;
+            font-size: 1.5em;
+            text-align: center;
+
+        }
+    </style>
+
+</head>
+
+
+<body ng-app="app">
+<div ng-controller="RibCalcCtrl">
+    <div id="data"><div id="title">IRCWCC Rib Calculator</div>
+
+        <div novalidate class="simple-form">
+        <div id="dims">
+        Length: <br/><input type="number"
+                       ng-model="ship.loa"
+                       ng-model-options="{ updateOn: 'blur' }"/><br/>
+        Bow Area: <br/><input type="number"
+                         ng-model="ship.bowArea"
+                         ng-model-options="{ updateOn: 'blur' }"
+                         ng-init="ship.bowArea=2"/><br/>
+        Stern Area: <br/><input type="number"
+                           ng-model="ship.sternArea"
+                           ng-init="ship.sternArea=1"/><br>
+        </div>
+        <div id="ribs">
+        Rib Width: <br/>
+        <label>
+            <input type="radio" ng-model="ship.ribWidth" value=".375">
+            3/16"
+        </label><br/>
+        <label>
+            <input type="radio" ng-model="ship.ribWidth" ng-value=".25">
+            1/4"
+        </label><br/>
+        <label>
+            <input type="radio" ng-model="ship.ribWidth" value=".125">
+            1/8"
+        </label>
+    </div>
+    </form></div>
+
+    <div class="results">
+        {{displayResults(ship)}}
+    </div></div>
+</div>
+
+<script>
+    angular.module('app', [])
+            .controller('RibCalcCtrl', ['$scope', function ($scope) {
+                var wide = .375;
+                var normal = .25;
+                var narrow = .125;
+
+                function getRemainingLength(length, ribCount, ribSize) {
+                    return length - (ribCount * ribSize);
+                }
+
+                function fraction(value) {
+
+                    var denominator = 64;
+                    var numerator;
+                    var dec = value % 1;
+                    var int = Math.floor(value);
+
+                    numerator = Math.floor(dec * denominator);
+
+                    while (numerator % 2 === 0) {
+                        numerator = numerator / 2;
+                        denominator = denominator / 2;
+                        console.log('Refactor ' + int + ' ' + numerator + '/' + denominator);
+                    }
+
+                    if (int < 1) {
+                        int = ''
+                    } else {
+                        int = int + ' '
+                    }
+                    ;
+
+                    return int + numerator + '/' + denominator + '"';
+                }
+
+                function boundArea(min, max, current) {
+                    if (current > max) {
+                        current = max;
+                        console.log('bounding area' + max);
+                    }
+                    else if (current <= 0) {
+                        current = min;
+                        console.log('bounding area' + max);
+                    }
+                    return current;
+                }
+
+                function ribBySize(len, size) {
+                    return Math.floor(len / size);
+                }
+
+                function ribsByType(totalLength, reqRibSize) {
+                    var sizeArr = [.375, .25, .125];
+                    var ribCounts = [];
+                    var len = totalLength;
+
+                    for (var i = 0; i < sizeArr.length; i++) {
+                        if (reqRibSize >= sizeArr[i] && len > 0) {
+                            if (ribBySize(len, sizeArr[i]) > 0) {
+                                ribCounts.push({size: fraction(sizeArr[i]), count: ribBySize(len, sizeArr[i])});
+                            }
+                            len = getRemainingLength(len, ribBySize(len, sizeArr[i]), sizeArr[i]);
+                        }
+                    }
+                    return {ribArr: ribCounts, remaining: fraction(len)};
+                }
+
+                function getSolidLength(loa) {
+                    var maxSolidPct = .15;
+                    return loa * maxSolidPct;
+                }
+
+                function getAllowedTotalRib(solid, used) {
+                    return solid - used;
+                }
+
+                $scope.ship = {
+                    loa: 52,
+                    bowArea: 2,
+                    sternArea: 1,
+                    ribWidth: .25
+                };
+
+                function getRibCount(ship) {
+                    ship.bowArea = boundArea(.125, 2, ship.bowArea);
+                    ship.sternArea = boundArea(.125, 1, ship.sternArea);
+                    ship.ribWidth = boundArea(.125, .375, ship.ribWidth);
+                    ship.loa = boundArea(ship.ribWidth + ship.bowArea + ship.sternArea + .125, 80, ship.loa);
+
+                    return ribsByType(getAllowedTotalRib(getSolidLength(ship.loa), ship.bowArea + ship.sternArea),
+                            ship.ribWidth);
+                }
+
+                $scope.displayResults = function (ship) {
+                    var output = "Ribs: ";
+                    var results = getRibCount(ship);
+                    for (var i = 0; i < results.ribArr.length; i++) {
+                        output = output + results.ribArr[i].count + ' ' + results.ribArr[i].size + ', ';
+                    }
+                    return output + 'and ' + results.remaining + ' left over';
+                };
+            }]);
+</script>
+</body>
+</html>
